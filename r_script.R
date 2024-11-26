@@ -54,12 +54,12 @@ colnames(data)[colnames(data) == "Gender__male_"] <- "Gender"
 data$Gender <- ifelse(data$Gender == "TRUE", "Male", "Female")
 
 #' Next, we will look at the proportions of NA for each column.
-# LAS_score                         0.062500000
-# Pre_PTT                           0.005208333
-# Pre_Fibrinogen                    0.973958333
-# Duration_of_ICU_Stay__days_       0.005208333
-# DEATH_DATE                        0.833333333
-# RBC_0-24hrs                       0.687500000
+# LAS_score                         0.062500000     #IMPUTE (numeric)
+# Pre_PTT                           0.005208333     #IMPUTE (numeric)
+# Pre_Fibrinogen                    0.973958333     #REMOVE >30% missingness
+# Duration_of_ICU_Stay__days_       0.005208333     #REMOVE (redundant)
+# DEATH_DATE                        0.833333333     # Leave as NA
+# RBC_0-24hrs                       0.687500000     # Replace NA with 0
 # RBC_24-48hrs                      0.729166667     0     0
 # RBC_48-72hrs                      0.750000000
 # FFP_0-24hrs                       0.802083333     0     0
