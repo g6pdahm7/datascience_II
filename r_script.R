@@ -45,3 +45,9 @@ status(data)
 #' spaces or brackets that may exist. 
 colnames(data) <- gsub("[[:space:]]|[()]", "_", colnames(data))
 
+#' Next we will do some basic cleaning, without any imputation.
+
+#' First we will start by reformatting the gender column. 
+#' Column will be renamed, and appropriate gender will be inputted.
+colnames(data)[colnames(data) == "Gender__male_"] <- "Gender"
+data$Gender <- ifelse(data$Gender == "TRUE", "Male", "Female")
