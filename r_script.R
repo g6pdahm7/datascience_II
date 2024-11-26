@@ -8,6 +8,7 @@ library(ggplot2)
 library(survival)
 library(car)
 library(funModeling)
+library(corrplot)
 
 #' Columns that were not highlighted were removed a priori
 #' on Excel. Since we are using Git, the same file should 
@@ -75,13 +76,74 @@ data$Gender <- ifelse(data$Gender == "TRUE", "Male", "Female")
 #' Pre_Fibrinogen will have to be excluded due to 
 #' missingness greater than 30%.
 
+#' Next, we will perform a simple EDA prior to 
+#' handling the any missingness.
 
+#' Before that, I want to create a logical column
+#' that states whether or not someone had a transplant.
+data <- data %>%
+  mutate(Transfusion = ifelse(Total_24hr_RBC > 0, TRUE, FALSE))
 
+#' Bar plot for the number of people with and without transfusions
+ggplot(data, aes(x = Transfusion)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Number of People Who Had Transfusions",
+       x = "Transfusion (TRUE = Yes, FALSE = No)",
+       y = "Count") +
+  theme_minimal()
 
+#' Bar plot for Type of transplant
+ggplot(data, aes(x = Type)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Transplant Types", x = "Type", y = "Count")
 
+#' Histogram of `Age`
+ggplot(data, aes(x = Age)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Age Distribution of Patients", x = "Age", y = "Frequency")
 
+#' Relationship between BMI and ICU Length of Stay
+ggplot(data, aes(x = BMI, y = Duration_of_ICU_Stay__days_)) +
+  geom_point(color = "darkblue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "BMI vs ICU Length of Stay", x = "BMI", y = "ICU Stay Duration (days)")
 
+#' Stacked bar chart for Gender by Type
+ggplot(data, aes(x = Gender, fill = Type)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Transplant Types by Gender", x = "Gender", y = "Proportion")
 
+#' Boxplot of total RBC transfusion based on 30-day survival
+ggplot(data, aes(x = ALIVE_30DAYS_YN, y = Total_24hr_RBC)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Total RBC Transfusion by 30-Day Survival", x = "Survived 30 Days (Y/N)", y = "Total RBC Units")
+
+#' Next, I want to create a simple correlation plot of some of 
+#' the patient characteristics, and some of the general outcomes:
+
+#' We will start by making sure everything is numeric
+data$Gender <- as.numeric(data$Gender == "Male")  
+data$Type <- as.numeric(as.factor(data$Type))   
+data$Transfusion <- as.numeric(data$Transfusion) 
+data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
+data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
+data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
+
+#' Define groups of variables
+group1 <- data %>%
+  select(Age, Gender, Weight, Height, BMI, Type)
+
+group2 <- data %>%
+  select(Transfusion, ICU_LOS, HOSPITAL_LOS, ALIVE_30DAYS_YN, ALIVE_90DAYS_YN, ALIVE_12MTHS_YN)
+
+#' Compute correlation matrix between group1 and group2
+cor_matrix <- cor(group1, group2, use = "pairwise.complete.obs")
+
+#' Plot the correlation heatmap
+corrplot(cor_matrix, method = "color", is.corr = TRUE, 
+         tl.cex = 0.8, number.cex = 0.7,
+         title = "Correlation Plot Between Predictors and Outcomes",
+         mar = c(0, 0, 1, 0))
 
 
 
