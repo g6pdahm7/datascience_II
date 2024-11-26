@@ -51,3 +51,38 @@ colnames(data) <- gsub("[[:space:]]|[()]", "_", colnames(data))
 #' Column will be renamed, and appropriate gender will be inputted.
 colnames(data)[colnames(data) == "Gender__male_"] <- "Gender"
 data$Gender <- ifelse(data$Gender == "TRUE", "Male", "Female")
+
+#' Next, we will look at the proportions of NA for each column.
+# LAS_score                         0.062500000
+# Pre_PTT                           0.005208333
+# Pre_Fibrinogen                    0.973958333
+# Duration_of_ICU_Stay__days_       0.005208333
+# DEATH_DATE                        0.833333333
+# RBC_0-24hrs                       0.687500000
+# RBC_24-48hrs                      0.729166667     0     0
+# RBC_48-72hrs                      0.750000000
+# FFP_0-24hrs                       0.802083333     0     0
+# FFP_24-48hrs                      0.828125000     0     0
+# FFP_48-72hrs                      0.828125000
+# Plt_0-24hrs                       0.802083333     0     0
+# Plt_24-48hrs                      0.812500000     0     0
+# Plt_48-72hrs                      0.822916667
+# Cryo_0-24hrs                      0.807291667     0     0
+# Cryo_24-48hrs                     0.828125000     0     0
+# Cryo_48-72hrs                     0.828125000
+
+#' Some initial thoughts: 
+#' Pre_Fibrinogen will have to be excluded due to 
+#' missingness greater than 30%.
+
+
+
+
+
+
+
+
+
+
+
+
