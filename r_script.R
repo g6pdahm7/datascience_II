@@ -9,6 +9,8 @@ library(survival)
 library(car)
 library(funModeling)
 library(corrplot)
+library(mice)
+library(glmnet)
 
 #' Columns that were not highlighted were removed a priori
 #' on Excel. Since we are using Git, the same file should 
@@ -145,6 +147,22 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
          title = "Correlation Plot Between Predictors and Outcomes",
          mar = c(0, 0, 1, 0))
 
+#' We will now create histograms for the two columns we will impute.
+#' This will help inform the imputation method we will use.
+
+#' Histogram for LAS_score
+ggplot(data, aes(x = LAS_score)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of LAS Score", x = "LAS Score", y = "Frequency") +
+  theme_minimal()
+#' Slightly right skewed 
+
+#' Histogram for Pre_PTT
+ggplot(data, aes(x = Pre_PTT)) +
+  geom_histogram(binwidth = 5, fill = "lightgreen", color = "black") +
+  labs(title = "Distribution of Pre PTT", x = "Pre PTT", y = "Frequency") +
+  theme_minimal()
+#' Right skewed
 
 #' Additional cleaning and Imputation
 
@@ -170,12 +188,78 @@ data[placeholder] <- lapply(data[placeholder], function(x) {
   return(x)
 })
 
+#' We will now use predictive mean matching to impute the 
+#' two columns that need imputation. 
+
+
+#' Imputation
+
+#' Ensure predictors and outcome are clean
+predictors <- data %>%
+  select(Age, Gender, Weight, Height, BMI, Type, Pre_Hb, Pre_Hct, Pre_Platelets, Pre_PT, Pre_INR, Pre_PTT, Pre_Creatinine) %>%
+  as.matrix() 
+
+#' Create a data frame for predictors
+predictors_df <- as.data.frame(predictors)
+
+#' Perform PMM imputation
+imputed_data <- mice(predictors_df, m = 1, method = "pmm", maxit = 5, seed = 123)
+
+#' Complete the dataset
+predictors <- as.matrix(complete(imputed_data))
 
 
 
 
+#' Analysis
+
+# Binary outcome for transfusion
+outcome_binary <- as.numeric(data$Transfusion)
+
+# Outcome for continuous model
+outcome_continuous <- data$Total_24hr_RBC
+
+# Create binary variable for "massive transfusion" (more than 10 RBC units)
+data$Massive_Transfusion <- as.numeric(data$Total_24hr_RBC > 10)
+
+# Outcome for massive transfusion model
+outcome_massive <- data$Massive_Transfusion
+
+# Lasso for binary outcome (logistic regression)
+lasso_binary <- cv.glmnet(predictors, outcome_binary, alpha = 1, family = "binomial")
+
+# Display results
+print(lasso_binary)
+
+# Coefficients of the selected model
+coef(lasso_binary, s = "lambda.min")
 
 
+# Lasso for continuous outcome
+lasso_continuous <- cv.glmnet(predictors, outcome_continuous, alpha = 1)
+
+# Display results
+print(lasso_continuous)
+
+# Coefficients of the selected model
+coef(lasso_continuous, s = "lambda.min")
 
 
+# Lasso for massive transfusion (logistic regression)
+lasso_massive <- cv.glmnet(predictors, outcome_massive, alpha = 1, family = "binomial")
+
+# Display results
+print(lasso_massive)
+
+# Coefficients of the selected model
+coef(lasso_massive, s = "lambda.min")
+
+
+# Plot cross-validation curves for binary model
+plot(lasso_binary)
+title("Cross-Validation Plot for Transfusion Prediction")
+
+# Plot cross-validation curves for continuous model
+plot(lasso_continuous)
+title("Cross-Validation Plot for Amount of Transfusion")
 
