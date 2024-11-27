@@ -11,6 +11,7 @@ library(funModeling)
 library(corrplot)
 library(mice)
 library(glmnet)
+library(missForest)
 
 #' Columns that were not highlighted were removed a priori
 #' on Excel. Since we are using Git, the same file should 
@@ -216,24 +217,65 @@ data <- data %>% select(-ECLS_ECMO)
 data <- data %>% select(-ECLS_CPB)
 
 
+data <- data %>% mutate_if(is.character, as.factor)
+colnames(data) <- gsub("[#-]", "_", colnames(data))
 
 #' Imputation
-#' We will use single imputation for the purposes of this assignment. 
-#' Predictive mean matching will be used. 
 
-#' Ensure predictors and outcome are clean
-predictors <- data %>%
-  select(Age, Gender, Weight, Height, BMI, Type, Pre_Hb, Pre_Hct, Pre_Platelets, Pre_PT, Pre_INR, Pre_PTT, Pre_Creatinine) %>%
-  as.matrix() 
 
-#' Create a data frame for predictors
-predictors_df <- as.data.frame(predictors)
+#' Converting character variables to factors
+data <- data %>% mutate_if(is.character, as.factor)
 
-#' Perform PMM imputation
-imputed_data <- mice(predictors_df, m = 1, method = "pmm", seed = 123)
 
-#' Complete the dataset
-predictors <- as.matrix(complete(imputed_data))
+#' Generate default methods vector
+methods <- make.method(data)
+
+# Set all methods to "" (no imputation)
+methods[] <- ""
+
+# Set methods for variables to impute
+methods["LAS_score"] <- "pmm"
+methods["Pre_PTT"] <- "pmm"
+
+# Predictors for LAS_score
+predictors_LAS <- c("Age", "Gender", "BMI", "COPD", "Type")
+
+# Predictors for Pre_PTT
+predictors_PTT <- c("Pre_Hb", "Pre_Hct", "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_Creatinine")
+
+# Initialize predictor matrix with zeros
+pred_matrix <- make.predictorMatrix(data)
+pred_matrix[,] <- 0  # Set all entries to 0
+
+# Set predictors for LAS_score
+pred_matrix["LAS_score", predictors_LAS] <- 1
+
+# Set predictors for Pre_PTT
+pred_matrix["Pre_PTT", predictors_PTT] <- 1
+
+# Perform single imputation
+imputed111 <- mice(
+  data,
+  method = methods,
+  predictorMatrix = pred_matrix,
+  m = 1,
+  maxit = 5,
+  seed = 123
+)
+
+# Complete the data
+data_imputed <- complete(imputed111)
+
+# Update the original data
+data$LAS_score <- data_imputed$LAS_score
+data$Pre_PTT <- data_imputed$Pre_PTT
+
+
+
+#' The following plots are used to visualize the imputed 
+#' data. 
+xyplot(imputed111, LAS_score ~ Gender)
+xyplot(imputed111, Pre_PTT ~ Pre_Hct)
 
 
 
