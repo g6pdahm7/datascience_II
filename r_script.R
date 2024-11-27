@@ -146,5 +146,36 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
          mar = c(0, 0, 1, 0))
 
 
+#' Additional cleaning and Imputation
+
+#' We will start by removing an unnecessary column that is 
+#' redundant with another column for icu stay.
+data <- data %>% select(-Duration_of_ICU_Stay__days_)
+
+#' Next, we are going to remove this column "Pre_Fibrinogen" because
+#' it has missingness greater than 30%.
+data <- data %>% select(-Pre_Fibrinogen)
+
+#' List of column names to replace NAs with 0
+placeholder <- c(
+  "RBC_0-24hrs", "RBC_24-48hrs", "RBC_48-72hrs", "RBC_72hr_Total",
+  "FFP_0-24hrs", "FFP_24-48hrs", "FFP_48-72hrs", "FFP_72hr_Total",
+  "Plt_0-24hrs", "Plt_24-48hrs", "Plt_48-72hrs", "Plt_72hr_Total",
+  "Cryo_0-24hrs", "Cryo_24-48hrs", "Cryo_48-72hrs", "Cryo_72hr_Total"
+)
+
+# Replace NAs with 0 in the specified columns
+data[placeholder] <- lapply(data[placeholder], function(x) {
+  x[is.na(x)] <- 0
+  return(x)
+})
+
+
+
+
+
+
+
+
 
 
