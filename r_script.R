@@ -123,19 +123,22 @@ ggplot(data, aes(x = ALIVE_30DAYS_YN, y = Total_24hr_RBC)) +
 #' Next, I want to create a simple correlation plot of some of 
 #' the patient characteristics, and some of the general outcomes:
 
+#' Create a new data set to view correction
+correlation_data <- data
+
 #' We will start by making sure everything is numeric
-data$Gender <- as.numeric(data$Gender == "Male")  
-data$Type <- as.numeric(as.factor(data$Type))   
-data$Transfusion <- as.numeric(data$Transfusion) 
-data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
-data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
-data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
+correlation_data$Gender <- as.numeric(data$Gender == "Male")  
+correlation_data$Type <- as.numeric(as.factor(data$Type))   
+correlation_data$Transfusion <- as.numeric(data$Transfusion) 
+correlation_data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
+correlation_data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
+correlation_data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
 
 #' Define groups of variables
-group1 <- data %>%
+group1 <- correlation_data %>%
   select(Age, Gender, Weight, Height, BMI, Type)
 
-group2 <- data %>%
+group2 <- correlation_data %>%
   select(Transfusion, ICU_LOS, HOSPITAL_LOS, ALIVE_30DAYS_YN, ALIVE_90DAYS_YN, ALIVE_12MTHS_YN)
 
 #' Compute correlation matrix between group1 and group2
