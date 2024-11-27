@@ -9,6 +9,9 @@ library(survival)
 library(car)
 library(funModeling)
 library(corrplot)
+library(mice)
+library(glmnet)
+library(missForest)
 
 #' Columns that were not highlighted were removed a priori
 #' on Excel. Since we are using Git, the same file should 
@@ -54,12 +57,12 @@ colnames(data)[colnames(data) == "Gender__male_"] <- "Gender"
 data$Gender <- ifelse(data$Gender == "TRUE", "Male", "Female")
 
 #' Next, we will look at the proportions of NA for each column.
-# LAS_score                         0.062500000
-# Pre_PTT                           0.005208333
-# Pre_Fibrinogen                    0.973958333
-# Duration_of_ICU_Stay__days_       0.005208333
-# DEATH_DATE                        0.833333333
-# RBC_0-24hrs                       0.687500000
+# LAS_score                         0.062500000     #IMPUTE (numeric)
+# Pre_PTT                           0.005208333     #IMPUTE (numeric)
+# Pre_Fibrinogen                    0.973958333     #REMOVE >30% missingness
+# Duration_of_ICU_Stay__days_       0.005208333     #REMOVE (redundant)
+# DEATH_DATE                        0.833333333     # Leave as NA
+# RBC_0-24hrs                       0.687500000     # Replace NA with 0
 # RBC_24-48hrs                      0.729166667     0     0
 # RBC_48-72hrs                      0.750000000
 # FFP_0-24hrs                       0.802083333     0     0
@@ -145,6 +148,187 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
          title = "Correlation Plot Between Predictors and Outcomes",
          mar = c(0, 0, 1, 0))
 
+#' We will now create histograms for the two columns we will impute.
+#' This will help inform the imputation method we will use.
+
+#' Histogram for LAS_score
+ggplot(data, aes(x = LAS_score)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of LAS Score", x = "LAS Score", y = "Frequency") +
+  theme_minimal()
+#' Slightly right skewed 
+
+#' Histogram for Pre_PTT
+ggplot(data, aes(x = Pre_PTT)) +
+  geom_histogram(binwidth = 5, fill = "lightgreen", color = "black") +
+  labs(title = "Distribution of Pre PTT", x = "Pre PTT", y = "Frequency") +
+  theme_minimal()
+#' Right skewed
+
+#' Additional cleaning and Imputation
+
+#' We will start by removing an unnecessary column that is 
+#' redundant with another column for icu stay.
+data <- data %>% select(-Duration_of_ICU_Stay__days_)
+
+#' Next, we are going to remove this column "Pre_Fibrinogen" because
+#' it has missingness greater than 30%.
+data <- data %>% select(-Pre_Fibrinogen)
+
+#' List of column names to replace NAs with 0
+placeholder <- c(
+  "RBC_0-24hrs", "RBC_24-48hrs", "RBC_48-72hrs", "RBC_72hr_Total",
+  "FFP_0-24hrs", "FFP_24-48hrs", "FFP_48-72hrs", "FFP_72hr_Total",
+  "Plt_0-24hrs", "Plt_24-48hrs", "Plt_48-72hrs", "Plt_72hr_Total",
+  "Cryo_0-24hrs", "Cryo_24-48hrs", "Cryo_48-72hrs", "Cryo_72hr_Total"
+)
+
+# Replace NAs with 0 in the specified columns
+data[placeholder] <- lapply(data[placeholder], function(x) {
+  x[is.na(x)] <- 0
+  return(x)
+})
+
+#' Some additional cleaning: 
+#' Removing redundant columns:
+data <- data %>% select(-First_Lung_Transplant)
+
+#' Creating a new column with the type of life support
+#' Combining 3 columns into one.
+#' Set everything in the new column as none.
+data$ECLS_Type <- "None"
+
+#' Assign "ECMO" where ECLS_ECMO is TRUE and ECLS_CPB is FALSE
+data$ECLS_Type[data$ECLS_ECMO == TRUE & data$ECLS_CPB == FALSE] <- "ECMO"
+
+#' Assign "CPB" where ECLS_CPB is TRUE and ECLS_ECMO is FALSE
+data$ECLS_Type[data$ECLS_CPB == TRUE & data$ECLS_ECMO == FALSE] <- "CPB"
+
+#' Convert ECLS_Type to a factor with specified levels
+data$ECLS_Type <- factor(data$ECLS_Type, levels = c("None", "ECMO", "CPB"))
+
+#' Verify the distribution
+table(data$ECLS_Type)
+
+#' Now that we have solved the redundancy, we will
+#' remove the unnecessary columns.
+data <- data %>% select(-Intraoperative_ECLS)
+data <- data %>% select(-ECLS_ECMO)
+data <- data %>% select(-ECLS_CPB)
 
 
+data <- data %>% mutate_if(is.character, as.factor)
+colnames(data) <- gsub("[#-]", "_", colnames(data))
+
+#' Imputation
+
+
+#' Converting character variables to factors
+data <- data %>% mutate_if(is.character, as.factor)
+
+
+#' Generate default methods vector
+methods <- make.method(data)
+
+# Set all methods to "" (no imputation)
+methods[] <- ""
+
+# Set methods for variables to impute
+methods["LAS_score"] <- "pmm"
+methods["Pre_PTT"] <- "pmm"
+
+# Predictors for LAS_score
+predictors_LAS <- c("Age", "Gender", "BMI", "COPD", "Type")
+
+# Predictors for Pre_PTT
+predictors_PTT <- c("Pre_Hb", "Pre_Hct", "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_Creatinine")
+
+# Initialize predictor matrix with zeros
+pred_matrix <- make.predictorMatrix(data)
+pred_matrix[,] <- 0  # Set all entries to 0
+
+# Set predictors for LAS_score
+pred_matrix["LAS_score", predictors_LAS] <- 1
+
+# Set predictors for Pre_PTT
+pred_matrix["Pre_PTT", predictors_PTT] <- 1
+
+# Perform single imputation
+imputed111 <- mice(
+  data,
+  method = methods,
+  predictorMatrix = pred_matrix,
+  m = 1,
+  maxit = 5,
+  seed = 123
+)
+
+# Complete the data
+data_imputed <- complete(imputed111)
+
+# Update the original data
+data$LAS_score <- data_imputed$LAS_score
+data$Pre_PTT <- data_imputed$Pre_PTT
+
+
+
+#' The following plots are used to visualize the imputed 
+#' data. 
+xyplot(imputed111, LAS_score ~ Gender)
+xyplot(imputed111, Pre_PTT ~ Pre_Hct)
+
+
+
+
+#' Analysis
+
+# Binary outcome for transfusion
+outcome_binary <- as.numeric(data$Transfusion)
+
+# Outcome for continuous model
+outcome_continuous <- data$Total_24hr_RBC
+
+# Create binary variable for "massive transfusion" (more than 10 RBC units)
+data$Massive_Transfusion <- as.numeric(data$Total_24hr_RBC > 10)
+
+# Outcome for massive transfusion model
+outcome_massive <- data$Massive_Transfusion
+
+# Lasso for binary outcome (logistic regression)
+lasso_binary <- cv.glmnet(predictors, outcome_binary, alpha = 1, family = "binomial")
+
+# Display results
+print(lasso_binary)
+
+# Coefficients of the selected model
+coef(lasso_binary, s = "lambda.min")
+
+
+# Lasso for continuous outcome
+lasso_continuous <- cv.glmnet(predictors, outcome_continuous, alpha = 1)
+
+# Display results
+print(lasso_continuous)
+
+# Coefficients of the selected model
+coef(lasso_continuous, s = "lambda.min")
+
+
+# Lasso for massive transfusion (logistic regression)
+lasso_massive <- cv.glmnet(predictors, outcome_massive, alpha = 1, family = "binomial")
+
+# Display results
+print(lasso_massive)
+
+# Coefficients of the selected model
+coef(lasso_massive, s = "lambda.min")
+
+
+# Plot cross-validation curves for binary model
+plot(lasso_binary)
+title("Cross-Validation Plot for Transfusion Prediction")
+
+# Plot cross-validation curves for continuous model
+plot(lasso_continuous)
+title("Cross-Validation Plot for Amount of Transfusion")
 
