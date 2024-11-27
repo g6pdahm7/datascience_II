@@ -123,19 +123,22 @@ ggplot(data, aes(x = ALIVE_30DAYS_YN, y = Total_24hr_RBC)) +
 #' Next, I want to create a simple correlation plot of some of 
 #' the patient characteristics, and some of the general outcomes:
 
+#' Create a new data set to view correction
+correlation_data <- data
+
 #' We will start by making sure everything is numeric
-data$Gender <- as.numeric(data$Gender == "Male")  
-data$Type <- as.numeric(as.factor(data$Type))   
-data$Transfusion <- as.numeric(data$Transfusion) 
-data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
-data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
-data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
+correlation_data$Gender <- as.numeric(data$Gender == "Male")  
+correlation_data$Type <- as.numeric(as.factor(data$Type))   
+correlation_data$Transfusion <- as.numeric(data$Transfusion) 
+correlation_data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
+correlation_data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
+correlation_data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y")
 
 #' Define groups of variables
-group1 <- data %>%
+group1 <- correlation_data %>%
   select(Age, Gender, Weight, Height, BMI, Type)
 
-group2 <- data %>%
+group2 <- correlation_data %>%
   select(Transfusion, ICU_LOS, HOSPITAL_LOS, ALIVE_30DAYS_YN, ALIVE_90DAYS_YN, ALIVE_12MTHS_YN)
 
 #' Compute correlation matrix between group1 and group2
@@ -146,6 +149,7 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
          tl.cex = 0.8, number.cex = 0.7,
          title = "Correlation Plot Between Predictors and Outcomes",
          mar = c(0, 0, 1, 0))
+
 
 #' We will now create histograms for the two columns we will impute.
 #' This will help inform the imputation method we will use.
@@ -279,55 +283,25 @@ xyplot(imputed111, Pre_PTT ~ Pre_Hct)
 
 
 
-#' Analysis
 
-# Binary outcome for transfusion
-outcome_binary <- as.numeric(data$Transfusion)
+#' Analysis 
 
-# Outcome for continuous model
-outcome_continuous <- data$Total_24hr_RBC
-
-# Create binary variable for "massive transfusion" (more than 10 RBC units)
-data$Massive_Transfusion <- as.numeric(data$Total_24hr_RBC > 10)
-
-# Outcome for massive transfusion model
-outcome_massive <- data$Massive_Transfusion
-
-# Lasso for binary outcome (logistic regression)
-lasso_binary <- cv.glmnet(predictors, outcome_binary, alpha = 1, family = "binomial")
-
-# Display results
-print(lasso_binary)
-
-# Coefficients of the selected model
-coef(lasso_binary, s = "lambda.min")
+#' Next we are going to identify the predictors that 
+#' we will be using in the Lasso classification model. 
+predictors11 <- c(
+  "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
+  "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
+  "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
+  "Pulm_Other", "Redo_Lung_Transplant", "ExVIVO_Lung_Perfusion",
+  "Preoperative_ECLS", "LAS_score", "Pre_Hb", "Pre_Hct",
+  "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_PTT", "Pre_Creatinine"
+)
 
 
-# Lasso for continuous outcome
-lasso_continuous <- cv.glmnet(predictors, outcome_continuous, alpha = 1)
-
-# Display results
-print(lasso_continuous)
-
-# Coefficients of the selected model
-coef(lasso_continuous, s = "lambda.min")
 
 
-# Lasso for massive transfusion (logistic regression)
-lasso_massive <- cv.glmnet(predictors, outcome_massive, alpha = 1, family = "binomial")
-
-# Display results
-print(lasso_massive)
-
-# Coefficients of the selected model
-coef(lasso_massive, s = "lambda.min")
 
 
-# Plot cross-validation curves for binary model
-plot(lasso_binary)
-title("Cross-Validation Plot for Transfusion Prediction")
 
-# Plot cross-validation curves for continuous model
-plot(lasso_continuous)
-title("Cross-Validation Plot for Amount of Transfusion")
+
 
