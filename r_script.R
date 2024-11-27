@@ -11,7 +11,6 @@ library(funModeling)
 library(corrplot)
 library(mice)
 library(glmnet)
-library(missForest)
 
 #' Columns that were not highlighted were removed a priori
 #' on Excel. Since we are using Git, the same file should 
