@@ -188,11 +188,38 @@ data[placeholder] <- lapply(data[placeholder], function(x) {
   return(x)
 })
 
-#' We will now use predictive mean matching to impute the 
-#' two columns that need imputation. 
+#' Some additional cleaning: 
+#' Removing redundant columns:
+data <- data %>% select(-First_Lung_Transplant)
+
+#' Creating a new column with the type of life support
+#' Combining 3 columns into one.
+#' Set everything in the new column as none.
+data$ECLS_Type <- "None"
+
+#' Assign "ECMO" where ECLS_ECMO is TRUE and ECLS_CPB is FALSE
+data$ECLS_Type[data$ECLS_ECMO == TRUE & data$ECLS_CPB == FALSE] <- "ECMO"
+
+#' Assign "CPB" where ECLS_CPB is TRUE and ECLS_ECMO is FALSE
+data$ECLS_Type[data$ECLS_CPB == TRUE & data$ECLS_ECMO == FALSE] <- "CPB"
+
+#' Convert ECLS_Type to a factor with specified levels
+data$ECLS_Type <- factor(data$ECLS_Type, levels = c("None", "ECMO", "CPB"))
+
+#' Verify the distribution
+table(data$ECLS_Type)
+
+#' Now that we have solved the redundancy, we will
+#' remove the unnecessary columns.
+data <- data %>% select(-Intraoperative_ECLS)
+data <- data %>% select(-ECLS_ECMO)
+data <- data %>% select(-ECLS_CPB)
+
 
 
 #' Imputation
+#' We will use single imputation for the purposes of this assignment. 
+#' Predictive mean matching will be used. 
 
 #' Ensure predictors and outcome are clean
 predictors <- data %>%
@@ -203,7 +230,7 @@ predictors <- data %>%
 predictors_df <- as.data.frame(predictors)
 
 #' Perform PMM imputation
-imputed_data <- mice(predictors_df, m = 1, method = "pmm", maxit = 5, seed = 123)
+imputed_data <- mice(predictors_df, m = 1, method = "pmm", seed = 123)
 
 #' Complete the dataset
 predictors <- as.matrix(complete(imputed_data))
