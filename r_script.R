@@ -87,38 +87,46 @@ data <- data %>%
   mutate(Transfusion = ifelse(Total_24hr_RBC > 0, TRUE, FALSE))
 
 #' Bar plot for the number of people with and without transfusions
-ggplot(data, aes(x = Transfusion)) +
-  geom_bar(fill = "steelblue") +
-  labs(title = "Number of People Who Had Transfusions",
-       x = "Transfusion (TRUE = Yes, FALSE = No)",
-       y = "Count") +
+ggplot(data, aes(x = as.factor(Transfusion))) +
+  geom_bar(fill = "steelblue", color = "black") +
+  labs(
+    title = "Number of People Who Had Transfusions",
+    x = "Transfusion (TRUE = Yes, FALSE = No)",
+    y = "Count"
+  ) +
   theme_minimal()
 
 #' Bar plot for Type of transplant
 ggplot(data, aes(x = Type)) +
-  geom_bar(fill = "steelblue") +
-  labs(title = "Distribution of Transplant Types", x = "Type", y = "Count")
+  geom_bar(fill = "steelblue", color = "black") +
+  labs(title = "Distribution of Transplant Types", x = "Type", y = "Count") + 
+  theme_minimal()
 
 #' Histogram of `Age`
 ggplot(data, aes(x = Age)) +
-  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
-  labs(title = "Age Distribution of Patients", x = "Age", y = "Frequency")
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "black") +
+  labs(title = "Age Distribution of Patients", x = "Age", y = "Frequency") + 
+  theme_minimal()
 
 #' Relationship between BMI and ICU Length of Stay
-ggplot(data, aes(x = BMI, y = Duration_of_ICU_Stay__days_)) +
-  geom_point(color = "darkblue") +
-  geom_smooth(method = "lm", color = "red") +
-  labs(title = "BMI vs ICU Length of Stay", x = "BMI", y = "ICU Stay Duration (days)")
+ggplot(data, aes(x = BMI, y = ICU_LOS)) +
+  geom_point(color = "steelblue") +
+  geom_smooth(method = "lm", color = "black") +
+  labs(title = "BMI vs ICU Length of Stay", x = "BMI", y = "ICU Stay Duration (days)") + 
+  theme_minimal()
 
 #' Stacked bar chart for Gender by Type
 ggplot(data, aes(x = Gender, fill = Type)) +
   geom_bar(position = "fill") +
-  labs(title = "Proportion of Transplant Types by Gender", x = "Gender", y = "Proportion")
+  scale_fill_manual(values = c("steelblue", "#B0C4DE", "#D3D3D3")) +
+  labs(title = "Proportion of Transplant Types by Gender", x = "Gender", y = "Proportion") +
+  theme_minimal()
 
 #' Boxplot of total RBC transfusion based on 30-day survival
 ggplot(data, aes(x = ALIVE_30DAYS_YN, y = Total_24hr_RBC)) +
-  geom_boxplot(fill = "lightgreen") +
-  labs(title = "Total RBC Transfusion by 30-Day Survival", x = "Survived 30 Days (Y/N)", y = "Total RBC Units")
+  geom_boxplot(fill = "steelblue", color = "black") +
+  labs(title = "Total RBC Transfusion by 30-Day Survival", x = "Survived 30 Days (Y/N)", y = "Total RBC Units") + 
+  theme_minimal()
 
 #' Next, I want to create a simple correlation plot of some of 
 #' the patient characteristics, and some of the general outcomes:
@@ -157,17 +165,18 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
 
 #' Histogram for LAS_score
 ggplot(data, aes(x = LAS_score)) +
-  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  geom_histogram(binwidth = 1, fill = "steelblue", color = "black") +
   labs(title = "Distribution of LAS Score", x = "LAS Score", y = "Frequency") +
   theme_minimal()
-#' Slightly right skewed 
+#' Right skewed - slightly normal
 
 #' Histogram for Pre_PTT
 ggplot(data, aes(x = Pre_PTT)) +
-  geom_histogram(binwidth = 5, fill = "lightgreen", color = "black") +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "black") +
   labs(title = "Distribution of Pre PTT", x = "Pre PTT", y = "Frequency") +
   theme_minimal()
 #' Right skewed
+
 
 #' Additional cleaning and Imputation
 
@@ -315,7 +324,31 @@ y <- as.numeric(model1data$Transfusion) - 1
 #' Train the model (hopefully it works lol)
 
 modelxx1 <- glmnet(x, y, family = "binomial")
-plot(modelxx1,label = T, xvar = "lambda")
+
+#plot(modelxx1,label = T, xvar = "lambda")
+
+# Define 27 custom hex colors
+colours <- c(
+  "#195d90", "#297022", "#b91c16", "#cc6600", "#52267d", "#8c4a20", "#7ca6c2",
+  "#8eb072", "#c47272", "#cc9933", "#9b94ac", "#cccc66", "#6da395", "#cccc80",
+  "#958094", "#cc665b", "#6686a4", "#cc8a4e", "#8aa24f", "#cc9ab5", "#a1a1a1",
+  "#9c66a1", "#a2cca0", "#ccba59", "#52907e", "#cc7250", "#6e80a4"
+)
+
+# Plot the Lasso paths 
+plot(
+  modelxx1, xvar = "lambda", label = TRUE, col = colours, 
+  lwd = 1,
+  main = "Lasso Paths",
+  xlab = "log(Lambda)", ylab = "Coefficients"
+)
+
+# Create a custom legend
+legend(
+  "topright", legend = rownames(modelxx1$beta),
+  col = colours,  
+  lty = 1, lwd = 1, cex = 0.6, ncol = 2, title = "Predictors"
+)
 
 
 #' Setting seed for reproducibility and doing cross-validation.
@@ -362,7 +395,24 @@ y22 <- model22data$Total_24hr_RBC
 lasso_model22 <- glmnet(x22, y22, family = "gaussian")
 
 # Plot coefficients vs log(lambda)
-plot(lasso_model22, xvar = "lambda", label = TRUE)
+#plot(lasso_model22, xvar = "lambda", label = TRUE)
+
+# Plot Lasso plot
+plot(
+  lasso_model22, xvar = "lambda", label = TRUE, col = colours, 
+  lwd = 1,
+  main = "Lasso Paths",
+  xlab = "log(Lambda)", ylab = "Coefficients"
+)
+
+# Create a custom legend
+legend(
+  "bottomright", legend = rownames(lasso_model22$beta),
+  col = colours,  
+  lty = 1, lwd = 1, cex = 0.6, ncol = 2, title = "Predictors"
+)
+
+
 
 # Cross-validation to find optimal lambda
 set.seed(123)
@@ -380,6 +430,67 @@ optimal_coefs22 <- coef(cv_lasso22, s = "lambda.min")
 print(optimal_coefs22)
 
 
+
+################# Model 3: Lasso Classification with Massive Transfusions
+
+#' Next we are going to identify the predictors that 
+#' we will be using in the Lasso classification model. 
+predictors33 <- c(
+  "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
+  "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
+  "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
+  "Pulm_Other", "Redo_Lung_Transplant", "ExVIVO_Lung_Perfusion",
+  "Preoperative_ECLS", "LAS_score", "Pre_Hb", "Pre_Hct",
+  "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_PTT", "Pre_Creatinine"
+)
+
+#' Subsetting the model data
+model3data <- data[, c(predictors33, "Massive_Transfusion")]
+
+#' Next we need to make the matrix for the predictors, 
+#' with dummy variables.
+x33 <- model.matrix(Massive_Transfusion ~ ., data = model3data)
+
+y33 <- as.numeric(model3data$Massive_Transfusion) - 1
+
+#' Train the model
+
+modelxx3 <- glmnet(x33, y33, family = "binomial")
+
+#plot(modelxx3,label = T, xvar = "lambda")
+
+# Plot the Lasso paths 
+plot(
+  modelxx3, xvar = "lambda", label = TRUE, col = colours, 
+  lwd = 1,
+  main = "Lasso Paths",
+  xlab = "log(Lambda)", ylab = "Coefficients"
+)
+
+# Create a custom legend
+legend(
+  "bottomright", legend = rownames(modelxx3$beta),
+  col = colours,  
+  lty = 1, lwd = 1, cex = 0.6, ncol = 2, title = "Predictors"
+)
+
+
+#' Setting seed for reproducibility and doing cross-validation.
+set.seed(123)
+cv_lasso_mt <- cv.glmnet(x33, y33, nfolds = 5)
+
+#' Plotting MSE vs log lambda
+plot(cv_lasso_mt)
+
+
+#' Optimal lambda value that minimizes MSE
+optimal_lambda_mt <- cv_lasso_mt$lambda.min
+# MSE corresponding to optimal lambda
+optimal_mse_mt <- cv_lasso_mt$cvm[cv_lasso_mt$lambda == optimal_lambda]
+
+#' Coefficients at optimal lambda
+optimal_coefs_mt <- coef(cv_lasso_mt, s = "lambda.min")
+print(optimal_coefs_mt)
 
 
 
