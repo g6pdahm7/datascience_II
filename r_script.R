@@ -132,7 +132,8 @@ correlation_data$Type <- as.numeric(as.factor(data$Type))
 correlation_data$Transfusion <- as.numeric(data$Transfusion) 
 correlation_data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")  
 correlation_data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
-correlation_data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y")
+correlation_data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
+
 
 #' Define groups of variables
 group1 <- correlation_data %>%
