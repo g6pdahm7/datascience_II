@@ -336,6 +336,61 @@ print(optimal_coefs)
 
 
 
+
+################### Model 2: Continuous outcome.
+#' Identical process to the one used above, just 
+#' different family.
+
+# Define predictors and outcome with updated variable names
+predictors22 <- c(
+  "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
+  "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
+  "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
+  "Pulm_Other", "Redo_Lung_Transplant", "ExVIVO_Lung_Perfusion",
+  "Preoperative_ECLS", "LAS_score", "Pre_Hb", "Pre_Hct",
+  "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_PTT", "Pre_Creatinine"
+)
+
+# Subset data for the new model
+model22data <- data[, c(predictors22, "Total_24hr_RBC")]
+
+# Create design matrix for predictors and outcome with updated variable names
+x22 <- model.matrix(Total_24hr_RBC ~ ., data = model22data)[, -1]
+y22 <- model22data$Total_24hr_RBC
+
+# Train Lasso model
+lasso_model22 <- glmnet(x22, y22, family = "gaussian")
+
+# Plot coefficients vs log(lambda)
+plot(lasso_model22, xvar = "lambda", label = TRUE)
+
+# Cross-validation to find optimal lambda
+set.seed(123)
+cv_lasso22 <- cv.glmnet(x22, y22, family = "gaussian", nfolds = 5)
+
+# Plot cross-validation curve
+plot(cv_lasso22)
+
+# Extract optimal lambda
+optimal_lambda22 <- cv_lasso22$lambda.min
+print(paste("Optimal Lambda:", optimal_lambda22))
+
+# Coefficients at optimal lambda
+optimal_coefs22 <- coef(cv_lasso22, s = "lambda.min")
+print(optimal_coefs22)
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###############
 
 
