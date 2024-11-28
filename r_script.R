@@ -303,7 +303,7 @@ xyplot(imputed111, Pre_PTT ~ Pre_Hct)
 
 #' Next we are going to identify the predictors that 
 #' we will be using in the Lasso classification model. 
-x <- c(
+predictors1 <- c(
   "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
   "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
   "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
@@ -313,7 +313,7 @@ x <- c(
 )
 
 #' Subsetting the model data
-model1data <- data[, c(x, "Transfusion")]
+model1data <- data[, c(predictors1, "Transfusion")]
 
 #' Next we need to make the matrix for the predictors, 
 #' with dummy variables.
@@ -514,10 +514,11 @@ plot(roc_lasso, main = paste("Lasso Regression ROC Curve (AUC =", round(auc_lass
 
 
 ################## TREE STUFF
+library(tree)
 data$Transfusion <- as.factor(data$Transfusion)
 
 # Construct the formula
-tree_formula <- as.formula(paste("Transfusion ~", paste(x, collapse = " + ")))
+tree_formula <- as.formula(paste("Transfusion ~", paste(predictors1, collapse = " + ")))
 
 
 # Build the classification tree model
