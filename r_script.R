@@ -324,8 +324,7 @@ y <- as.numeric(model1data$Transfusion) - 1
 #' Train the model (hopefully it works lol)
 
 modelxx1 <- glmnet(x, y, family = "binomial")
-
-#plot(modelxx1,label = T, xvar = "lambda")
+plot(modelxx1,label = T, xvar = "lambda")
 
 # Define 27 custom hex colors
 colours <- c(
@@ -367,6 +366,7 @@ optimal_mse <- cv.lasso$cvm[cv.lasso$lambda == optimal_lambda]
 #' Coefficients at optimal lambda
 optimal_coefs <- coef(cv.lasso, s = "lambda.min")
 print(optimal_coefs)
+
 
 
 
@@ -491,12 +491,6 @@ optimal_mse_mt <- cv_lasso_mt$cvm[cv_lasso_mt$lambda == optimal_lambda]
 #' Coefficients at optimal lambda
 optimal_coefs_mt <- coef(cv_lasso_mt, s = "lambda.min")
 print(optimal_coefs_mt)
-
-
-
-
-
-
 
 
 
