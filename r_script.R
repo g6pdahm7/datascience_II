@@ -529,6 +529,131 @@ text(tree_model, pretty = 0)
 
 
 
+#####Q2
+
+################# LASSO CLASSIFICATION - MORTALITY
+
+# Create a new column "mortality"
+data$mortality <- ifelse(
+  !is.na(data$DEATH_DATE) | data$ALIVE_30DAYS_YN == "N" | data$ALIVE_90DAYS_YN == "N" | data$ALIVE_12MTHS_YN == "N",
+  "Y",
+  "N"
+)
+
+# Factorize the mortality variable
+data$mortality <- as.factor(data$mortality)
+
+#' Next we are going to identify the predictors that 
+#' we will be using in the Lasso classification model on the impact of 
+#' transfusion on patient outcome (mortality) along with covariants 
+#' Model 1: Mortality 
+predictors_mortality <- c(
+  "Type", "Weight", "Age", "BMI", "COPD",
+  "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
+  "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
+  "Pulm_Other", "Redo_Lung_Transplant", "ExVIVO_Lung_Perfusion",
+  "Preoperative_ECLS", "LAS_score", "ICU_LOS", "HOSPITAL_LOS", "Massive_Transfusion"
+)
+
+#' Subsetting the model data
+mortality_model <- data[, c(predictors_mortality, "mortality")]
+
+#' Next we need to make the matrix for the predictors, 
+#' with dummy variables.
+x_mort <- model.matrix(mortality ~ ., data = mortality_model)
+
+y_mort <- as.numeric(mortality_model$mortality) - 1
+
+# Identify the column index for "Massive_Transfusion"
+massive_transfusion_index <- which(colnames(x_mort) == "Massive_Transfusion")
+
+# Create a penalty factor vector (1 for all predictors, 0 for "Massive_Transfusion")
+penalty_factors <- rep(1, ncol(x_mort))
+penalty_factors[massive_transfusion_index] <- 0
+
+# Train the Lasso model with custom penalty factors
+model_mort <- glmnet(
+  x_mort, y_mort, family = "binomial", 
+  penalty.factor = penalty_factors
+)
+
+# Plot the Lasso paths
+plot(
+  model_mort, xvar = "lambda", label = TRUE, col = colours, 
+  lwd = 1, main = "Lasso Paths",
+  xlab = "log(Lambda)", ylab = "Coefficients"
+)
+
+# Custom legend
+legend(
+  "bottomright", legend = rownames(model_mort$beta),
+  col = colours,  
+  lty = 1, lwd = 1, cex = 0.6, ncol = 2, title = "Predictors"
+)
+
+# Cross-validation with penalty factor
+set.seed(123)
+cv_lass_mort <- cv.glmnet(
+  x_mort, y_mort, family = "binomial", 
+  penalty.factor = penalty_factors, nfolds = 5
+)
+
+# Plot MSE vs log lambda
+plot(cv_lass_mort)
+
+# Optimal lambda value
+optimal_lambda_mort <- cv_lass_mort$lambda.min
+
+# Coefficients at optimal lambda
+optimal_coefs_mort <- coef(cv_lass_mort, s = "lambda.min")
+print(optimal_coefs_mort)
+
+#OR 
+
+#trying to penalize? 
+# Identify the column index for "Massive_Transfusion"
+massive_transfusion_index <- which(colnames(x_mort) == "Massive_Transfusion")
+
+# Create a penalty factor vector (1 for all predictors, 0 for "Massive_Transfusion")
+penalty_factors <- rep(1, ncol(x_mort))
+penalty_factors[massive_transfusion_index] <- 0
+
+# Train the Lasso model with custom penalty factors
+model_mort <- glmnet(
+  x_mort, y_mort, family = "binomial", 
+  penalty.factor = penalty_factors
+)
+
+# Plot the Lasso paths
+plot(
+  model_mort, xvar = "lambda", label = TRUE, col = colours, 
+  lwd = 1, main = "Lasso Paths",
+  xlab = "log(Lambda)", ylab = "Coefficients"
+)
+
+# Custom legend
+legend(
+  "bottomright", legend = rownames(model_mort$beta),
+  col = colours,  
+  lty = 1, lwd = 1, cex = 0.6, ncol = 2, title = "Predictors"
+)
+
+# Cross-validation with penalty factor
+set.seed(123)
+cv_lass_mort <- cv.glmnet(
+  x_mort, y_mort, family = "binomial", 
+  penalty.factor = penalty_factors, nfolds = 5
+)
+
+# Plot MSE vs log lambda
+plot(cv_lass_mort)
+
+# Optimal lambda value
+optimal_lambda_mort <- cv_lass_mort$lambda.min
+
+# Coefficients at optimal lambda
+optimal_coefs_mort <- coef(cv_lass_mort, s = "lambda.min")
+print(optimal_coefs_mort)
 
 
 
