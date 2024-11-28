@@ -337,7 +337,6 @@ print(optimal_coefs)
 
 
 
-
 ################### Model 2: Continuous outcome.
 #' Identical process to the one used above, just 
 #' different family.
