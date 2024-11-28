@@ -288,7 +288,7 @@ xyplot(imputed111, Pre_PTT ~ Pre_Hct)
 
 #' Next we are going to identify the predictors that 
 #' we will be using in the Lasso classification model. 
-predictors11 <- c(
+x <- c(
   "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
   "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
   "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
@@ -298,7 +298,88 @@ predictors11 <- c(
 )
 
 #' Subsetting the model data
-model1data <- data[, c(predictors, "Transfusion")]
+model1data <- data[, c(x, "Transfusion")]
+
+#' Setting seed
+set.seed(123)
+
+#' Next, we are going to split and test the data.
+train_indices <- sample(nrow(model1data), size = 0.7 * nrow(model1data))
+training_set <- model1data[train_indices, ]
+testing_set <- model1data[-train_indices, ]
+
+
+# Ensure 'Transfusion' is a factor with levels 'False' and 'True'
+model1data$Transfusion <- factor(model1data$Transfusion, levels = c(FALSE, TRUE), labels = c("False", "True"))
+
+# Prepare the design matrices for training and testing sets
+# Create the model matrix for predictors (excluding the intercept)
+x_train <- model.matrix(Transfusion ~ ., data = training_set)[, -1]
+y_train <- training_set$Transfusion
+
+x_test <- model.matrix(Transfusion ~ ., data = testing_set)[, -1]
+y_test <- testing_set$Transfusion
+
+# Convert factor response to numeric (0 for 'False', 1 for 'True')
+y_train_numeric <- as.numeric(y_train) - 1
+
+# Training the Lasso model using cross-validation
+set.seed(123)
+cv_lasso <- cv.glmnet(
+  x_train,
+  y_train_numeric,
+  family = "binomial",
+  type.measure = "auc",
+  nfolds = 5
+)
+
+# Plotting the cross-validation curve
+plot(cv_lasso)
+
+
+################
+
+# Predict probabilities on the test set using the optimal lambda
+pred_probs_lasso <- predict(cv_lasso, newx = x_test, s = "lambda.min", type = "response")
+
+# Convert probabilities to class labels based on a threshold of 0.5
+predictions <- ifelse(pred_probs_lasso > 0.5, "True", "False")
+predictions <- factor(predictions, levels = c("False", "True"))
+
+# Confusion matrix to evaluate classification performance
+conf_matrix <- table(Predicted = predictions, Actual = y_test)
+print(conf_matrix)
+
+# Compute accuracy
+accuracy <- mean(predictions == y_test)
+print(paste("Accuracy:", round(accuracy, 4)))
+
+###############
+
+
+# Load pROC package if not already loaded
+library(pROC)
+
+# Create ROC curve and calculate AUC
+roc_lasso <- roc(y_test, as.numeric(pred_probs_lasso))
+auc_lasso <- auc(roc_lasso)
+
+# Plot ROC curve
+plot(roc_lasso, main = paste("Lasso Regression ROC Curve (AUC =", round(auc_lasso, 2), ")"))
+
+data$Transfusion <- as.factor(data$Transfusion)
+
+# Construct the formula
+tree_formula <- as.formula(paste("Transfusion ~", paste(x, collapse = " + ")))
+
+
+# Build the classification tree model
+tree_model <- tree(tree_formula, data = data)
+
+# Plot the tree
+plot(tree_model)
+text(tree_model, pretty = 0)
+
 
 
 
