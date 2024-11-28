@@ -305,6 +305,36 @@ x <- c(
 #' Subsetting the model data
 model1data <- data[, c(x, "Transfusion")]
 
+#' Next we need to make the matrix for the predictors, 
+#' with dummy variables.
+x <- model.matrix(Transfusion ~ ., data = model1data)
+
+y <- as.numeric(model1data$Transfusion) - 1
+
+#' Train the model (hopefully it works lol)
+
+modelxx1 <- glmnet(x, y, family = "binomial")
+plot(modelxx1,label = T, xvar = "lambda")
+
+
+#' Setting seed for reproducibility and doing cross-validation.
+set.seed(123)
+cv.lasso <- cv.glmnet(x, y, nfolds = 5)
+
+#' Plotting MSE vs log lambda
+plot(cv.lasso)
+
+
+#' Optimal lambda value that minimizes MSE
+optimal_lambda <- cv.lasso$lambda.min
+# MSE corresponding to optimal lambda
+optimal_mse <- cv.lasso$cvm[cv.lasso$lambda == optimal_lambda]
+
+#' Coefficients at optimal lambda
+optimal_coefs <- coef(cv.lasso, s = "lambda.min")
+print(optimal_coefs)
+
+
 
 ###############
 
