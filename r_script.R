@@ -134,6 +134,7 @@ correlation_data$ALIVE_30DAYS_YN <- as.numeric(data$ALIVE_30DAYS_YN == "Y")
 correlation_data$ALIVE_90DAYS_YN <- as.numeric(data$ALIVE_90DAYS_YN == "Y")  
 correlation_data$ALIVE_12MTHS_YN <- as.numeric(data$ALIVE_12MTHS_YN == "Y") 
 
+
 #' Define groups of variables
 group1 <- correlation_data %>%
   select(Age, Gender, Weight, Height, BMI, Type)
@@ -149,6 +150,7 @@ corrplot(cor_matrix, method = "color", is.corr = TRUE,
          tl.cex = 0.8, number.cex = 0.7,
          title = "Correlation Plot Between Predictors and Outcomes",
          mar = c(0, 0, 1, 0))
+
 
 #' We will now create histograms for the two columns we will impute.
 #' This will help inform the imputation method we will use.
@@ -282,55 +284,94 @@ xyplot(imputed111, Pre_PTT ~ Pre_Hct)
 
 
 
-#' Analysis
-
-# Binary outcome for transfusion
-outcome_binary <- as.numeric(data$Transfusion)
-
-# Outcome for continuous model
-outcome_continuous <- data$Total_24hr_RBC
-
-# Create binary variable for "massive transfusion" (more than 10 RBC units)
-data$Massive_Transfusion <- as.numeric(data$Total_24hr_RBC > 10)
-
-# Outcome for massive transfusion model
-outcome_massive <- data$Massive_Transfusion
-
-# Lasso for binary outcome (logistic regression)
-lasso_binary <- cv.glmnet(predictors, outcome_binary, alpha = 1, family = "binomial")
-
-# Display results
-print(lasso_binary)
-
-# Coefficients of the selected model
-coef(lasso_binary, s = "lambda.min")
 
 
-# Lasso for continuous outcome
-lasso_continuous <- cv.glmnet(predictors, outcome_continuous, alpha = 1)
-
-# Display results
-print(lasso_continuous)
-
-# Coefficients of the selected model
-coef(lasso_continuous, s = "lambda.min")
+#' Analysis 
 
 
-# Lasso for massive transfusion (logistic regression)
-lasso_massive <- cv.glmnet(predictors, outcome_massive, alpha = 1, family = "binomial")
 
-# Display results
-print(lasso_massive)
+################# LASSO CLASSIFICATION
 
-# Coefficients of the selected model
-coef(lasso_massive, s = "lambda.min")
+#' Next we are going to identify the predictors that 
+#' we will be using in the Lasso classification model. 
+x <- c(
+  "Type", "Gender", "Height", "Weight", "Age", "BMI", "COPD",
+  "alpha1_Antitrypsin_Deficiency", "Cystic_Fibrosis",
+  "Idiopathic_Pulmonary_Hypertension", "Interstitial_Lung_Disease",
+  "Pulm_Other", "Redo_Lung_Transplant", "ExVIVO_Lung_Perfusion",
+  "Preoperative_ECLS", "LAS_score", "Pre_Hb", "Pre_Hct",
+  "Pre_Platelets", "Pre_PT", "Pre_INR", "Pre_PTT", "Pre_Creatinine"
+)
+
+#' Subsetting the model data
+model1data <- data[, c(x, "Transfusion")]
+
+#' Next we need to make the matrix for the predictors, 
+#' with dummy variables.
+x <- model.matrix(Transfusion ~ ., data = model1data)
+
+y <- as.numeric(model1data$Transfusion) - 1
+
+#' Train the model (hopefully it works lol)
+
+modelxx1 <- glmnet(x, y, family = "binomial")
+plot(modelxx1,label = T, xvar = "lambda")
 
 
-# Plot cross-validation curves for binary model
-plot(lasso_binary)
-title("Cross-Validation Plot for Transfusion Prediction")
+#' Setting seed for reproducibility and doing cross-validation.
+set.seed(123)
+cv.lasso <- cv.glmnet(x, y, nfolds = 5)
 
-# Plot cross-validation curves for continuous model
-plot(lasso_continuous)
-title("Cross-Validation Plot for Amount of Transfusion")
+#' Plotting MSE vs log lambda
+plot(cv.lasso)
+
+
+#' Optimal lambda value that minimizes MSE
+optimal_lambda <- cv.lasso$lambda.min
+# MSE corresponding to optimal lambda
+optimal_mse <- cv.lasso$cvm[cv.lasso$lambda == optimal_lambda]
+
+#' Coefficients at optimal lambda
+optimal_coefs <- coef(cv.lasso, s = "lambda.min")
+print(optimal_coefs)
+
+
+
+###############
+
+
+# Load pROC package if not already loaded
+library(pROC)
+
+# Create ROC curve and calculate AUC
+roc_lasso <- roc(y_test, as.numeric(pred_probs_lasso))
+auc_lasso <- auc(roc_lasso)
+
+# Plot ROC curve
+plot(roc_lasso, main = paste("Lasso Regression ROC Curve (AUC =", round(auc_lasso, 2), ")"))
+
+
+
+
+
+################## TREE STUFF
+data$Transfusion <- as.factor(data$Transfusion)
+
+# Construct the formula
+tree_formula <- as.formula(paste("Transfusion ~", paste(x, collapse = " + ")))
+
+
+# Build the classification tree model
+tree_model <- tree(tree_formula, data = data)
+
+# Plot the tree
+plot(tree_model)
+text(tree_model, pretty = 0)
+
+
+
+
+
+
+
 
